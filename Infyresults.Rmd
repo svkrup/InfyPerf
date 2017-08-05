@@ -6,36 +6,54 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = F)
 ```
+This interactive graph shows the NASDAQ stock price of Infosys (INFY) superimposed on the quaterly revenue trends in MUSD. This is an exercise in using Plotly. Stock price is obtained from Google Finance. The graph is published at RPubs at the link: http://rpubs.com/svkrup/infy 
+
 
 ```{r}
 library(quantmod)
 library(plotly)
 library(zoo)
 
+# Get quarterly revenue data 
+results <- read.csv("~/Infy/InfyResults.csv", header = TRUE, sep=",", stringsAsFactors = FALSE)
+# Convert to quarters
+results$qtr <- as.yearqtr(results$qdate, format="%Y-%m-%d")
+#results$qdate <- as.Date(as.yearqtr(results$Quarter, format = "Q%q %y"), frac = 1)
+
+# Get stock info
 getSymbols('INFY', src = 'google')
-results$qdate <- as.Date(as.yearqtr(results$Quarter, format = "Q%q %y"), frac = 1)
+# Retain quarter end data
 Infy.q <- INFY[endpoints(INFY, on ="quarters")]
+# Convert to dataframe
 infydf <- data.frame(price=Infy.q$INFY.Close)
 infydf$qtr <- as.yearqtr((time(Infy.q)))
+
+# Merge quarterly revenue and stock price dataframes
 infyall <- merge(infydf, results, by="qtr")
 
 #plot_ly(as.data.frame(INFY)) %>% add_trace(x=~time(INFY), y=~INFY.Close, type='scatter', mode='lines')
+
+# Get key events to show as labels on the plot
 events <- read.csv("~/Infy/InfyEvents.csv", sep=",", header = TRUE, stringsAsFactors = FALSE)
 events$qtr <- as.yearqtr(events$Quarter, format= "Q%q %y")
 
-plot_ly(infyall) %>% add_trace(x = ~qtr, y = ~Revenue, type = 'bar', name = 'Revenue in MUSD',marker = list(color = '#C9EFF9'), hoverinfo = "text", text = ~paste("$",Revenue, 'M')) %>% add_trace(x=~qtr, y=~INFY.Close, yaxis = 'y2', type='scatter', mode='lines', name = 'Stock Price', line = list(color = '#45171D'), hoverinfo = "text", text = ~paste("Closing Price:", "<br>", "$", INFY.Close)) %>% add_annotations(x= events$qtr,y = events$Revenue, text = events$Event, showarrow = T, ax=0) %>%  layout(title = 'Infosys stock price and revenue by quarter from 2009 to 2017',
+# Plot the stocks, revenue and labels
+plot_ly(infyall) %>% 
+add_trace(x = ~qtr, y = ~Revenue, type = 'bar', name = 'Revenue in MUSD',marker = list(color = '#C9EFF9'), hoverinfo = "text", text = ~paste("$",Revenue, 'M')) %>%
+
+add_trace(x=~qtr, y=~INFY.Close, yaxis = 'y2', type='scatter', mode='lines', name = 'Stock Price', line = list(color = '#45171D'), hoverinfo = "text", text = ~paste("Closing Price:", "<br>", "$", INFY.Close)) %>% 
+
+add_annotations(x= events$qtr,y = events$Revenue, text = events$Event, showarrow = T, ax=0) %>%  
+
+layout(title = 'Infosys stock price and revenue by quarter from 2009 to 2017',
          xaxis = list(title = ""),
          yaxis = list(side = 'left', title = 'Revenue in MUSD', showgrid = FALSE, zeroline = FALSE),
          yaxis2 = list(side = 'right', overlaying = "y", title = 'Stock Price in USD', showgrid = FALSE, zeroline = FALSE))
 
 
-plot_ly(infyall) %>%add_trace(x=~qtr, y=~INFY.Close, yaxis = 'y2', type='scatter', mode='lines', name = 'Stock Price', line = list(color = '#45171D'), hoverinfo = "text", text = ~paste("Closing Price:", "<br>", "$", INFY.Close)) %>% add_annotations(
-    x= events$qtr,
-    y = 2500,
-    text = events$Event
-    )
+#plot_ly(infyall) %>%add_trace(x=~qtr, y=~INFY.Close, yaxis = 'y2', type='scatter', mode='lines', name = 'Stock Price', line = list(color = '#45171D'), hoverinfo = "text", text = ~paste("Closing Price:", "<br>", "$", INFY.Close)) %>% add_annotations(x= events$qtr,y = 2500,text = events$Event)
 
 
 ```
